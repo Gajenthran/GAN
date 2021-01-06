@@ -12,7 +12,8 @@
 
 /* Structure représentant la configuration du programme */
 typedef struct config config_t;
-struct config {
+struct config
+{
   int nhd_rad;      // rayon de voisinage
   int iter;         // nombre d'itérations
   int map_l, map_c; // dimension de la map

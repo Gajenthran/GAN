@@ -18,8 +18,8 @@ FILENAME = iris.data
 CONFIGF = som.cfg
 README = README.md
 distdir = $(PROGNAME)
-HEADERS = som.h parser.h ll.h config.h mnist.h matrix.h
-SOURCES = main.c som.c parser.c ll.c matrix.c
+HEADERS = config.h mnist.h matrix.h
+SOURCES = main.c matrix.c
 OBJ = $(SOURCES:.c=.o)
 
 DOXYFILE = documentation/Doxyfile

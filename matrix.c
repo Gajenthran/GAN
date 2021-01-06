@@ -173,6 +173,29 @@ matrix_t *mat_sum(matrix_t *a, matrix_t *b)
     return mat;
 }
 
+void mat_sum_(matrix_t *src, matrix_t *a, matrix_t *b)
+{
+
+    int r, c;
+    if (a->rows == b->rows && a->cols == b->cols)
+    {
+        for (r = 0; r < a->rows; r++)
+            for (c = 0; c < a->cols; c++)
+                src->data[r][c] = a->data[r][c] + b->data[r][c];
+    }
+    else if (a->cols == b->cols && b->rows == 1)
+    {
+        for (r = 0; r < a->rows; r++)
+            for (c = 0; c < a->cols; c++)
+                src->data[r][c] = a->data[r][c] + b->data[0][c];
+    }
+    else
+    {
+        printf("Error: bad matrix structures while sum\n");
+        exit(0);
+    }
+}
+
 /** \brief Addition matricielle.
  *
  * \param a matrice a
@@ -222,6 +245,14 @@ matrix_t *mat_lrelu(matrix_t *a, double alpha)
     return res;
 }
 
+void mat_lrelu_(matrix_t *src, matrix_t *a, double alpha)
+{
+    int r, c;
+    for (r = 0; r < a->rows; r++)
+        for (c = 0; c < a->cols; c++)
+            src->data[r][c] = LRELU(a->data[r][c], alpha);
+}
+
 // #define TANH(x) (2 / (1 + (exp(-2 * (x)))))
 matrix_t *mat_tanh(matrix_t *a)
 {
@@ -233,6 +264,15 @@ matrix_t *mat_tanh(matrix_t *a)
             res->data[r][c] = tanh(a->data[r][c]);
 
     return res;
+}
+
+void mat_tanh_(matrix_t *src, matrix_t *a)
+{
+    int r, c;
+
+    for (r = 0; r < a->rows; r++)
+        for (c = 0; c < a->cols; c++)
+            src->data[r][c] = tanh(a->data[r][c]);
 }
 
 #define DTANH(x) ((1.0) - (pow((tanh((x))), 2)))
@@ -320,6 +360,21 @@ matrix_t *mat_sub(matrix_t *a, matrix_t *b)
     return res;
 }
 
+void mat_sub_(matrix_t *src, matrix_t *a, matrix_t *b)
+{
+    if (a->rows != b->rows || a->cols != b->cols)
+    {
+        printf("%d = %d || %d = %d\n", a->rows, b->rows, a->cols, b->cols);
+        printf("Error: bad matrix structures while sub\n");
+        exit(0);
+    }
+
+    int r, c;
+    for (r = 0; r < a->rows; r++)
+        for (c = 0; c < a->cols; c++)
+            src->data[r][c] = a->data[r][c] - b->data[r][c];
+}
+
 /** \brief Produit matriciel.
  *
  * \param a matrice a
@@ -340,6 +395,20 @@ matrix_t *mat_mul(matrix_t *a, matrix_t *b)
         for (c = 0; c < b->cols; c++)
             res->data[r][c] = a->data[r][c] * b->data[r][c];
     return res;
+}
+
+void mat_mul_(matrix_t *src, matrix_t *a, matrix_t *b)
+{
+    if (src->rows != a->rows || src->cols != b->cols || a->rows != b->rows || a->cols != b->cols)
+    {
+        printf("Error: bad matrix structures while mul\n");
+        exit(0);
+    }
+
+    int r, c;
+    for (r = 0; r < a->rows; r++)
+        for (c = 0; c < b->cols; c++)
+            src->data[r][c] = a->data[r][c] * b->data[r][c];
 }
 
 /** \brief Produit matriciel entre une valeur et une matrice.
@@ -388,6 +457,15 @@ matrix_t *mat_sigmoid(matrix_t *a)
     return res;
 }
 
+void mat_sigmoid_(matrix_t *src, matrix_t *a)
+{
+    int r, c;
+
+    for (r = 0; r < a->rows; r++)
+        for (c = 0; c < a->cols; c++)
+            src->data[r][c] = SIGMOID(a->data[r][c]);
+}
+
 /** \brief Applique la fonction dérivée de 
  *la sigmoïde sur la matrice.
  *
@@ -434,6 +512,26 @@ matrix_t *mat_dot(matrix_t *a, matrix_t *b)
     }
 
     return res;
+}
+
+void mat_dot_(matrix_t *src, matrix_t *a, matrix_t *b)
+{
+    if (src->rows != a->rows || src->cols != b->cols || a->cols != b->rows)
+    {
+        printf("Erreur: mat_dot\n");
+        exit(1);
+    }
+
+    int r, c, k;
+    for (r = 0; r < a->rows; r++)
+    {
+        for (c = 0; c < b->cols; c++)
+        {
+            src->data[r][c] = 0;
+            for (k = 0; k < b->rows; k++)
+                src->data[r][c] += a->data[r][k] * b->data[k][c];
+        }
+    }
 }
 
 /** \brief Redimensionner la matrice en transformant
@@ -661,6 +759,15 @@ matrix_t *mat_copy(matrix_t *src, int i_min, int m_sz)
     return mat;
 }
 
+void mat_copy_(matrix_t *src, matrix_t *a, int i_min)
+{
+    int r, c;
+
+    for (r = 0; r < src->rows; r++)
+        for (c = 0; c < src->cols; c++)
+            src->data[r][c] = a->data[i_min + r][c];
+}
+
 matrix_t *mat_sum_axis0(matrix_t *src)
 {
     matrix_t *a = mat_zinit(1, src->cols);
@@ -675,6 +782,19 @@ matrix_t *mat_sum_axis0(matrix_t *src)
         sum = 0.0;
     }
     return a;
+}
+
+void mat_sum_axis0_(matrix_t *src, matrix_t *a)
+{
+    int r, c;
+    double sum = 0.0;
+    for (r = 0; r < a->cols; r++)
+    {
+        for (c = 0; c < a->rows; c++)
+            sum += a->data[c][r];
+        src->data[0][r] = sum;
+        sum = 0.0;
+    }
 }
 
 matrix_t *mat_vinit(matrix_t *src, double value)
@@ -710,4 +830,36 @@ double mat_mean(matrix_t *x)
         for (c = 0; c < x->cols; c++)
             sum += x->data[r][c];
     return sum / x->rows;
+}
+
+double mat_error(matrix_t *a, matrix_t *b)
+{
+    if (a->rows != b->rows || a->cols != b->cols)
+    {
+        printf("Error: diff mat \n");
+        exit(0);
+    }
+    double diff = 0.0;
+    int r, c;
+    for (r = 0; r < a->rows; r++)
+        for (c = 0; c < a->cols; c++)
+        {
+            diff += a->data[r][c] - b->data[r][c];
+        }
+
+    return diff;
+}
+
+double mat_sum_values(matrix_t *a)
+{
+    double sum = 0.0;
+    int r, c;
+
+    for (r = 0; r < a->rows; r++) {
+        for (c = 0; c < a->cols; c++) {
+            sum += a->data[r][c];
+        }
+    }
+
+    return sum;
 }
