@@ -22,7 +22,7 @@
 // Constante 2 * PI
 #define _2PI 6.28
 
-// Constante pour fixer l'affiche a chaque 'n' iteration
+// Constante pour fixer l'affichage a chaque 'n' iteration
 #define PRINT_EP 5
 
 /**
@@ -291,7 +291,7 @@ gan_t* init_gan(config_t* cfg)
  * \param gan structure GAN
  * \param z données bruitées
  */
-void forward_g_(gan_t* gan, matrix_t* z)
+void forward_generator(gan_t* gan, matrix_t* z)
 {
   int i;
   matrix_t* act = z;
@@ -322,7 +322,7 @@ void forward_g_(gan_t* gan, matrix_t* z)
  * \param x image générée par le generator / image source
  * \param real booléen pour l'image générée ou source
  */
-void forward_d_(gan_t* gan, matrix_t* x, int real)
+void forward_discriminator(gan_t* gan, matrix_t* x, int real)
 {
   discriminator_t* dis = gan->d;
   matrix_t** z = real ? dis->z_real : dis->z_fake;
@@ -355,7 +355,7 @@ void forward_d_(gan_t* gan, matrix_t* x, int real)
  * \param gan la structure gan
  * \param x_real données d'apprentissage 
  */
-void backward_d_(gan_t* gan, matrix_t* x_real)
+void backward_discriminator(gan_t* gan, matrix_t* x_real)
 {
   int i, r, c, out = gan->nb_layers - 2;
 
@@ -460,7 +460,7 @@ void backward_d_(gan_t* gan, matrix_t* x_real)
  * \param gan la structure gan
  * \param z donnée bruitée
  */
-void backward_g_(gan_t* gan, matrix_t* z)
+void backward_generator(gan_t* gan, matrix_t* z)
 {
   int i, r, c, out = gan->nb_layers - 2;
 
@@ -619,12 +619,12 @@ void train_gan(config_t* cfg, gan_t* gan, mnist_t* mnist)
       generate_noise(z);
       mat_copy_(x_real, cfg->x_train, i * cfg->batch_sz);
 
-      forward_g_(gan, z);
-      forward_d_(gan, x_real, 1);
-      forward_d_(gan, gen->a[out], 0);
+      forward_generator(gan, z);
+      forward_discriminator(gan, x_real, 1);
+      forward_discriminator(gan, gen->a[out], 0);
 
-      backward_d_(gan, x_real);
-      backward_g_(gan, z);
+      backward_discriminator(gan, x_real);
+      backward_generator(gan, z);
     }
 
     if (cfg->progressbar)

@@ -69,10 +69,10 @@ struct gan_t {
 };
 
 gan_t* init_gan(config_t*);
-void forward_g_(gan_t*, matrix_t*);
-void forward_d_(gan_t*, matrix_t*, int);
-void backward_d_(gan_t*, matrix_t*);
-void backward_g_(gan_t*, matrix_t*);
+void forward_generator(gan_t*, matrix_t*);
+void forward_discriminator(gan_t*, matrix_t*, int);
+void backward_discriminator(gan_t*, matrix_t*);
+void backward_generator(gan_t*, matrix_t*);
 void train_gan(config_t*, gan_t*, mnist_t*);
 
 #endif
