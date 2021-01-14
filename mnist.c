@@ -1,6 +1,7 @@
 /*!
  * \file mnist.c
- * \brief Fichier s'occupant de la gestion des images MNIST
+ * \brief Fichier s'occupant de la gestion des images MNIST.
+ * Repris et adapté du projet https://github.com/takafumihoriuchi/MNIST_for_C.
  * \author PANCHALINGAMOORTHY Gajenthran
  */
 #include <stdio.h>
@@ -12,24 +13,20 @@
 #include "config.h"
 
 /**
- * Lire le fichier MNIST et récupérer les données (de type char).
- * \param file fichier MNIST 
- * \param num_data nombre de données
- * \param len_info taille d'une donnée
- * \param n nombre de valeur d'une image
- * \param data données
- * \param buf buffer
+ * Echange des bytes pour les données MNIST
+ * 
+ * \param ptr pointeur représentant les données MNIST
  */
-void fliplong(unsigned char *ptr)
+void fliplong(unsigned char* ptr)
 {
   register unsigned char val;
 
-  // Swap 1st and 4th bytes
+  // Echanger le premier et le quatrième byte
   val = *(ptr);
   *(ptr) = *(ptr + 3);
   *(ptr + 3) = val;
 
-  // Swap 2nd and 3rd bytes
+  // Echanger le deuxième et le troisième byte
   ptr += 1;
   val = *(ptr);
   *(ptr) = *(ptr + 1);
@@ -45,28 +42,25 @@ void fliplong(unsigned char *ptr)
  * \param data données
  * \param buf buffer
  */
-void read_mnist_char(char *file, int num_data, int len_info, int n, unsigned char **data, unsigned int *buf)
+void read_mnist_char(char* file, int num_data, int len_info, int n, unsigned char** data, unsigned int* buf)
 {
   int i, fd;
-  unsigned char *ptr;
+  unsigned char* ptr;
 
-  if ((fd = open(file, O_RDONLY)) == -1)
-  {
-    fprintf(stderr, "couldn't open image file");
-    exit(-1);
+  if ((fd = open(file, O_RDONLY)) == -1) {
+    fprintf(stderr, "Error: Couldn't open image file.");
+    exit(1);
   }
 
   read(fd, buf, len_info * sizeof(int));
 
-  for (i = 0; i < len_info; i++)
-  {
-    ptr = (unsigned char *)(buf + i);
+  for (i = 0; i < len_info; i++) {
+    ptr = (unsigned char*)(buf + i);
     fliplong(ptr);
     ptr = ptr + sizeof(int);
   }
 
-  for (i = 0; i < num_data; i++)
-  {
+  for (i = 0; i < num_data; i++) {
     read(fd, data[i], n * sizeof(unsigned char));
   }
 
@@ -79,7 +73,7 @@ void read_mnist_char(char *file, int num_data, int len_info, int n, unsigned cha
  * \param data_image_char valeurs des images (type char)
  * \param data_image valeurs des images (type double)
  */
-void image_char2double(int num_data, unsigned char **data_image_char, double **data_image)
+void image_char2double(int num_data, unsigned char** data_image_char, double** data_image)
 {
   int i, j;
   for (i = 0; i < num_data; i++)
@@ -93,7 +87,7 @@ void image_char2double(int num_data, unsigned char **data_image_char, double **d
  * \param data_label_char label (type char)
  * \param data_label label (type int)
  */
-void label_char2int(int num_data, unsigned char **data_label_char, unsigned int *data_label)
+void label_char2int(int num_data, unsigned char** data_label_char, unsigned int* data_label)
 {
   int i;
   for (i = 0; i < num_data; i++)
@@ -105,7 +99,7 @@ void label_char2int(int num_data, unsigned char **data_label_char, unsigned int 
  * \param num_data nombre de données
  * \param data_image valeurs de l'image
  */
-void print_data(int num_data, double **data_image)
+void print_data(int num_data, double** data_image)
 {
   int i, j;
   for (i = 0; i < num_data; i++)
@@ -120,51 +114,49 @@ void print_data(int num_data, double **data_image)
  * \param output_file: le fichier de sortie
  * \return structure mnist_t 
  */
-mnist_t *init_mnist(char *output_file)
+mnist_t* init_mnist(char* output_file)
 {
   int i;
-  mnist_t *mnist = (mnist_t *)malloc(sizeof(*mnist));
+  mnist_t* mnist = (mnist_t*)malloc(sizeof(*mnist));
   assert(mnist);
 
-  unsigned int *info_image = (unsigned int *)malloc(MNIST_LEN_INFO_IMAGE * sizeof(*info_image));
+  unsigned int* info_image = (unsigned int*)malloc(MNIST_LEN_INFO_IMAGE * sizeof(*info_image));
   assert(info_image);
-  unsigned int *info_label = (unsigned int *)malloc(MNIST_LEN_INFO_LABEL * sizeof(*info_label));
+  unsigned int* info_label = (unsigned int*)malloc(MNIST_LEN_INFO_LABEL * sizeof(*info_label));
   assert(info_label);
-  unsigned int *train_label = (unsigned int *)malloc(MNIST_NUM_TRAIN * sizeof(*train_label));
+  unsigned int* train_label = (unsigned int*)malloc(MNIST_NUM_TRAIN * sizeof(*train_label));
   assert(train_label);
 
-  double **train_image = (double **)malloc(MNIST_NUM_TRAIN * sizeof(*train_image));
+  // TODO: long
+  double** train_image = (double**)malloc(MNIST_NUM_TRAIN * sizeof(*train_image));
   assert(train_image);
-  for (i = 0; i < MNIST_NUM_TRAIN; i++)
-  {
-    train_image[i] = (double *)malloc(MNIST_SIZE * sizeof(*train_image[i]));
+
+  for (i = 0; i < MNIST_NUM_TRAIN; i++) {
+    train_image[i] = (double*)malloc(MNIST_NUM_TRAIN * sizeof(*train_image[i]));
     assert(train_image[i]);
   }
 
-  unsigned char **image = (unsigned char **)malloc(MNIST_MAX_IMAGESIZE * sizeof(*image));
+  unsigned char** image = (unsigned char**)malloc(MNIST_MAX_IMAGESIZE * sizeof(*image));
   assert(image);
 
-  for (i = 0; i < MNIST_MAX_IMAGESIZE; i++)
-  {
-    image[i] = (unsigned char *)malloc(MNIST_MAX_IMAGESIZE * sizeof(*image[i]));
+  for (i = 0; i < MNIST_MAX_IMAGESIZE; i++) {
+    image[i] = (unsigned char*)malloc(MNIST_MAX_IMAGESIZE * sizeof(*image[i]));
     assert(image[i]);
   }
 
-  unsigned char **train_image_char = (unsigned char **)malloc(MNIST_NUM_TRAIN * sizeof(*train_image_char));
+  unsigned char** train_image_char = (unsigned char**)malloc(MNIST_NUM_TRAIN * sizeof(*train_image_char));
   assert(train_image_char);
 
-  for (i = 0; i < MNIST_NUM_TRAIN; i++)
-  {
-    train_image_char[i] = (unsigned char *)malloc(MNIST_SIZE * sizeof(*train_image_char[i]));
+  for (i = 0; i < MNIST_NUM_TRAIN; i++) {
+    train_image_char[i] = (unsigned char*)malloc(MNIST_SIZE * sizeof(*train_image_char[i]));
     assert(train_image_char[i]);
   }
 
-  unsigned char **train_label_char = (unsigned char **)malloc(MNIST_NUM_TRAIN * sizeof(*train_label_char));
+  unsigned char** train_label_char = (unsigned char**)malloc(MNIST_NUM_TRAIN * sizeof(*train_label_char));
   assert(train_label_char);
 
-  for (i = 0; i < MNIST_NUM_TRAIN; i++)
-  {
-    train_label_char[i] = (unsigned char *)malloc(sizeof(*train_label_char[i]));
+  for (i = 0; i < MNIST_NUM_TRAIN; i++) {
+    train_label_char[i] = (unsigned char*)malloc(sizeof(*train_label_char[i]));
     assert(train_label_char);
   }
 
@@ -186,48 +178,46 @@ mnist_t *init_mnist(char *output_file)
  * \param output_file fichier de sortie
  * \return structure mnist_t
  */
-mnist_t *load_mnist(char *output_file)
+mnist_t* load_mnist(char* output_file)
 {
-  mnist_t *mnist = init_mnist(output_file);
+  mnist_t* mnist = init_mnist(output_file);
 
   char mnist_train_image[] = MNIST_TRAIN_IMAGE;
   char mnist_train_label[] = MNIST_TRAIN_LABEL;
 
   read_mnist_char(
-      mnist_train_image,
-      MNIST_NUM_TRAIN,
-      MNIST_LEN_INFO_IMAGE,
-      MNIST_SIZE,
-      mnist->train_image_char,
-      mnist->info_image);
+    mnist_train_image,
+    MNIST_NUM_TRAIN,
+    MNIST_LEN_INFO_IMAGE,
+    MNIST_SIZE,
+    mnist->train_image_char,
+    mnist->info_image);
 
   image_char2double(
-      MNIST_NUM_TRAIN,
-      mnist->train_image_char,
-      mnist->train_image);
+    MNIST_NUM_TRAIN,
+    mnist->train_image_char,
+    mnist->train_image);
 
   read_mnist_char(
-      mnist_train_label,
-      MNIST_NUM_TRAIN,
-      MNIST_LEN_INFO_LABEL,
-      1,
-      mnist->train_label_char,
-      mnist->info_label);
+    mnist_train_label,
+    MNIST_NUM_TRAIN,
+    MNIST_LEN_INFO_LABEL,
+    1,
+    mnist->train_label_char,
+    mnist->info_label);
 
   label_char2int(
-      MNIST_NUM_TRAIN,
-      mnist->train_label_char,
-      mnist->train_label);
+    MNIST_NUM_TRAIN,
+    mnist->train_label_char,
+    mnist->train_label);
 
   // Retirer une fois les données chargées et castées
-  if (mnist->train_image_char)
-  {
+  if (mnist->train_image_char) {
     free(mnist->train_image_char);
     mnist->train_image_char = NULL;
   }
 
-  if (mnist->train_label_char)
-  {
+  if (mnist->train_label_char) {
     free(mnist->train_label_char);
     mnist->train_label_char = NULL;
   }
@@ -238,16 +228,15 @@ mnist_t *load_mnist(char *output_file)
  * Sauvegarder une image en créant un nouveau fichier.
  * \param mnist structure mnist
  */
-void save_image(mnist_t *mnist)
+void save_image(mnist_t* mnist)
 {
   char file_name[MNIST_MAX_FILENAME];
-  FILE *fp;
+  FILE* fp;
   int x, y;
 
   strcpy(file_name, mnist->output);
 
-  if ((fp = fopen(file_name, "wb")) == NULL)
-  {
+  if ((fp = fopen(file_name, "wb")) == NULL) {
     fprintf(stderr, "Error: could not open file. \n");
     exit(1);
   }
@@ -262,7 +251,7 @@ void save_image(mnist_t *mnist)
       fputc(mnist->image[x][y], fp);
   fclose(fp);
 
-  printf("Image was saved successfully. \n");
+  printf("Image was saved successfully in %s. \n", mnist->output);
 }
 
 /**
@@ -272,13 +261,13 @@ void save_image(mnist_t *mnist)
  * \param data_image données de l'image
  * \param mnist structure mnist
  */
-void save_mnist_pgm_mat(matrix_t *data_image, mnist_t *mnist)
+void save_mnist_pgm_mat(matrix_t* data_image, mnist_t* mnist)
 {
   int x, y;
 
   for (y = 0; y < MNIST_HEIGHT; y++)
     for (x = 0; x < MNIST_WIDTH; x++)
-      mnist->image[x][y] = data_image->data[0][y * MNIST_WIDTH + x] * 255.0;
+      mnist->image[x][y] = data_image->data[y * MNIST_WIDTH + x] * 255.0;
 
   save_image(mnist);
 }
@@ -287,46 +276,39 @@ void save_mnist_pgm_mat(matrix_t *data_image, mnist_t *mnist)
  * Libère la mémoire de la structure mnist.
  * \param mnist structure mnist
  */
-void free_mnist(mnist_t *mnist)
+void free_mnist(mnist_t* mnist)
 {
-  if (mnist->image)
-  {
+  if (mnist->image) {
     free(mnist->image);
     mnist->image = NULL;
   }
 
-  if (mnist->info_image)
-  {
+  if (mnist->info_image) {
     free(mnist->info_image);
     mnist->info_image = NULL;
   }
 
-  if (mnist->info_label)
-  {
+  if (mnist->info_label) {
     free(mnist->info_label);
     mnist->info_label = NULL;
   }
 
-  if (mnist->train_image)
-  {
+  if (mnist->train_image) {
     free(mnist->train_image);
     mnist->train_image = NULL;
   }
 
-  if (mnist->train_image_char)
-  {
+  if (mnist->train_image_char) {
     free(mnist->train_image_char);
     mnist->train_image_char = NULL;
   }
 
-  if (mnist->train_label)
-  {
+  if (mnist->train_label) {
     free(mnist->train_label);
     mnist->train_label = NULL;
   }
 
-  if (mnist->train_label_char)
-  {
+  if (mnist->train_label_char) {
     free(mnist->train_label_char);
     mnist->train_label_char = NULL;
   }

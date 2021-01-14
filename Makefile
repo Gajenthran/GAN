@@ -8,17 +8,15 @@ TAR = tar
 MKDIR = mkdir
 CP = rsync -R
 
-DEBUG ?= 0
-TEST = $(shell n=0; while [[ $n -lt 1000 ]]; do ./som iris.data; n=$((n+1)); done)
-
 CFLAGS = -Wall -O3
 
 PROGNAME = gan
 FILENAME = iris.data
 CONFIGF = gan.cfg
 README = README.md
+STATIC = libgan.a
 distdir = $(PROGNAME)
-HEADERS = config.h mnist.h matrix.h mnist.h gan.h
+HEADERS = matrix.h config.h mnist.h matrix.h mnist.h gan.h
 SOURCES = main.c matrix.c mnist.c config.c gan.c
 OBJ = $(SOURCES:.c=.o)
 
@@ -27,15 +25,17 @@ DISTFILES = $(SOURCES) Makefile $(HEADERS) $(DOXYFILE) $(FILENAME) $(CONFIGF) $(
 
 all: $(PROGNAME)
 
-ifeq ($(DEBUG), 1) 
-    CFLAGS += -DDEBUG
-endif
 
 $(PROGNAME): $(OBJ)
 	$(CC) $(OBJ) -o $(PROGNAME)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+libs: $(STATIC)
+
+$(STATIC): $(OBJ)
+	ar rcs $@ $^
 
 dist: distdir
 	$(CHMOD) -R a+r $(distdir)
@@ -50,11 +50,6 @@ distdir: $(DISTFILES)
 
 doc: $(DOXYFILE)
 	cd documentation && doxygen && cd ..
-
-test:
-	for number in {1..1000} ; do \
-	    ./som $(FILENAME) ; \
-	done
 
 clean:
 	@$(RM) -r $(PROGNAME) $(OBJ) *~ $(distdir).tgz documentation/*~ documentation/html
