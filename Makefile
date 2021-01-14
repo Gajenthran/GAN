@@ -13,9 +13,9 @@ TEST = $(shell n=0; while [[ $n -lt 1000 ]]; do ./som iris.data; n=$((n+1)); don
 
 CFLAGS = -Wall -O3
 
-PROGNAME = som
+PROGNAME = gan
 FILENAME = iris.data
-CONFIGF = som.cfg
+CONFIGF = gan.cfg
 README = README.md
 distdir = $(PROGNAME)
 HEADERS = config.h mnist.h matrix.h mnist.h gan.h

@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <time.h>
 #include "config.h"
 #include "mnist.h"
@@ -10,18 +9,27 @@
 
 #define CONFIG_FILENAME "gan.cfg"
 
-int main(void)
+void usage(char *exec)
 {
+  fprintf(stderr, "Usage: %s <output_file> \n", exec);
+  exit(1);
+}
+
+int main(int argc, char *argv[])
+{
+  if(argc != 2)
+    usage(argv[0]);
+
   srand(time(NULL));
 
-  mnist_t *mnist = load_mnist();
+  mnist_t *mnist = load_mnist(argv[1]);
 
   const char config_file[] = CONFIG_FILENAME;
   config_t *cfg = init_config(config_file);
   load_mnist_config(cfg, mnist);
 
   gan_t *gan = init_gan(cfg);
-
   train_gan(cfg, gan, mnist);
+
   return 0;
 }

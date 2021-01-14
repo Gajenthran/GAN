@@ -23,22 +23,22 @@ typedef struct mnist mnist_t;
 
 struct mnist
 {
-    unsigned int *train_label;
-    unsigned int *info_image;
-    unsigned int *info_label;
-    double **train_image;
-    unsigned char **image;
-    unsigned char **train_image_char;
-    unsigned char **train_label_char;
+  unsigned int *train_label;
+  unsigned int *info_image;
+  unsigned int *info_label;
+  double **train_image;
+  unsigned char **image;
+  unsigned char **train_image_char;
+  unsigned char **train_label_char;
+  char * output;
 };
 
-mnist_t *init_mnist(void);
-mnist_t *load_mnist(void);
-void FlipLong(unsigned char *);
+mnist_t *init_mnist(char *);
+mnist_t *load_mnist(char *);
 void read_mnist_char(char *, int, int, int, unsigned char **, unsigned int *);
 void image_char2double(int, unsigned char **, double **);
 void label_char2int(int, unsigned char **, unsigned int *);
-void save_image(char *, mnist_t *);
+void save_image(mnist_t *);
 void save_mnist_pgm_mat(matrix_t *, mnist_t *);
 
 #endif

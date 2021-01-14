@@ -18,15 +18,15 @@ enum ACT_E
 typedef struct gan_t gan_t;
 struct gan_t
 {
-  int *layers_sz_d;
-  int *layers_sz_g;
+  unsigned int *layers_sz_d;
+  unsigned int *layers_sz_g;
+  unsigned int nb_layers;
+  unsigned int epochs;
+  unsigned int input_layer_sz_g;
+  unsigned int hidden_layer_sz_g;
+  unsigned int hidden_layer_sz_d;
   int *act_fn_d;
   int *act_fn_g;
-  int nb_layers;
-  int epochs;
-  int input_layer_sz_g;
-  int hidden_layer_sz_g;
-  int hidden_layer_sz_d;
   double lr;
   double dr;
 

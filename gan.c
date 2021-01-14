@@ -1,9 +1,7 @@
 /*!
- * \file som.c
- * \brief Fichier comprenant les fonctionnalités
- * de parsing pour exécuter le modèle de SOM: 
- * la phase d'apprentissage et la phase
- * d'étiquetage.
+ * \file gan.c
+ * \brief Fichier comprenant le modèle GAN avec 
+ * le discriminator et le generator.
  * \author PANCHALINGAMOORTHY Gajenthran
  */
 #include <assert.h>
@@ -14,28 +12,39 @@
 #include <math.h>
 #include "gan.h"
 
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MIN(a, b) \
+  ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a < _b ? _a : _b; })
 
-void usage(char *msg)
-{
-  fprintf(stderr, "%s\n", msg);
-  exit(1);
-}
+#define PI 3.14
 
-double normal_rand(void)
+/**
+ * Générer un nombre aléatoire avec une distribution normale.
+ * \return nombre aléatoire
+ */
+static double normal_rand(void)
 {
   double v1 = ((double)(rand()) + 1.) / ((double)(RAND_MAX) + 1.);
   double v2 = ((double)(rand()) + 1.) / ((double)(RAND_MAX) + 1.);
-  return cos(2 * 3.14 * v2) * sqrt(-2. * log(v1));
+  return cos(2 * PI * v2) * sqrt(-2. * log(v1));
 }
 
+/**
+ * Initialiser le modèle GAN avec les paramètres de config.
+ * \return structure GAN
+ */
 gan_t *init_gan(config_t *cfg)
 {
-  int *layers_sz_d = (int *)malloc(cfg->nb_layers * sizeof(*layers_sz_d));
-  int *layers_sz_g = (int *)malloc(cfg->nb_layers * sizeof(*layers_sz_g));
+  unsigned int *layers_sz_d = (unsigned int *)malloc(cfg->nb_layers * sizeof(*layers_sz_d));
+  assert(layers_sz_d);
+  unsigned int *layers_sz_g = (unsigned int *)malloc(cfg->nb_layers * sizeof(*layers_sz_g));
+  assert(layers_sz_g);
 
   int *act_fn_g = (int *)malloc((cfg->nb_layers - 1) * sizeof(*act_fn_g));
+  assert(act_fn_g);
   int *act_fn_d = (int *)malloc((cfg->nb_layers - 1) * sizeof(*act_fn_d));
+  assert(act_fn_d);
 
   act_fn_g[0] = LRELU;
   act_fn_g[1] = TANH;
@@ -51,28 +60,48 @@ gan_t *init_gan(config_t *cfg)
   layers_sz_g[2] = MNIST_SIZE;
 
   matrix_t **w_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*w_g));
+  assert(w_g);
   matrix_t **b_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*b_g));
+  assert(b_g);
   matrix_t **z_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*z_g));
+  assert(z_g);
   matrix_t **a_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*a_g));
+  assert(a_g);
 
   matrix_t **w_d = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*w_d));
+  assert(w_d);
   matrix_t **b_d = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*b_d));
+  assert(b_d);
   matrix_t **z_d_fake = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*z_d_fake));
+  assert(z_d_fake);
   matrix_t **z_d_real = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*z_d_real));
+  assert(z_d_real);
   matrix_t **a_d_fake = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*a_d_fake));
+  assert(a_d_fake);
   matrix_t **a_d_real = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*a_d_real));
+  assert(a_d_real);
 
   matrix_t **da_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*a_g));
+  assert(da_g);
   matrix_t **dz_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*z_g));
+  assert(dz_g);
   matrix_t **dw_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*w_g));
+  assert(dw_g);
   matrix_t **db_g = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*b_g));
+  assert(db_g);
 
   matrix_t **da_d = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*a_g));
+  assert(da_d);
   matrix_t **dz_d = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*z_g));
+  assert(dz_d);
   matrix_t **dw_d_real = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*w_g));
+  assert(dw_d_real);
   matrix_t **dw_d_fake = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*w_g));
+  assert(dw_d_fake);
   matrix_t **db_d_real = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*b_g));
+  assert(db_d_real);
   matrix_t **db_d_fake = (matrix_t **)malloc((cfg->nb_layers - 1) * sizeof(*b_g));
+  assert(db_d_fake);
 
   int i, r, c;
   int g_rows, d_rows;
@@ -132,7 +161,6 @@ gan_t *init_gan(config_t *cfg)
   gan->dr = cfg->decay_rate;
   gan->epochs = cfg->epochs;
 
-  // nouveau modèle
   gan->w_g = w_g;
   gan->b_g = b_g;
   gan->w_d = w_d;
@@ -157,13 +185,20 @@ gan_t *init_gan(config_t *cfg)
   return gan;
 }
 
+/**
+ * Génère une image par rapport au label demandé
+ * avec le generator, à partir de données bruitées.
+ * \param gan structure GAN
+ * \param z données bruitées
+ */
 void forward_g_(gan_t *gan, matrix_t *z)
 {
   int i;
   matrix_t *act = z;
   for (i = 0; i < gan->nb_layers - 1; i++)
   {
-    mat_sum_(gan->z_g[i], mat_dot(act, gan->w_g[i]), gan->b_g[i]);
+    // mat_sum_(gan->z_g[i], mat_dot(act, gan->w_g[i]), gan->b_g[i]);
+    mat_sum_z_act(gan->z_g[i], act, gan->w_g[i], gan->b_g[i]);
 
     switch (gan->act_fn_g[i])
     {
@@ -174,13 +209,21 @@ void forward_g_(gan_t *gan, matrix_t *z)
       mat_tanh_(gan->a_g[i], gan->z_g[i]);
       break;
     default:
-      printf("Error activation function.\n");
+      fprintf(stderr, "Error: invalid activation function. \n");
       exit(1);
     }
     act = gan->a_g[i];
   }
 }
 
+/**
+ * Prédire si le label des images avec le discriminator,
+ * en cherchant à vérifier la ressemblance des images généres
+ * avec le générator par rapport aux images sources.
+ * \param gan structure GAN
+ * \param x image générée par le generator / image source
+ * \param real booléen pour l'image générée ou source
+ */
 void forward_d_(gan_t *gan, matrix_t *x, int real)
 {
   int i;
@@ -191,7 +234,8 @@ void forward_d_(gan_t *gan, matrix_t *x, int real)
 
   for (i = 0; i < gan->nb_layers - 1; i++)
   {
-    mat_sum_(z_d[i], mat_dot(act, gan->w_d[i]), gan->b_d[i]);
+    // mat_sum_(z_d[i], mat_dot(act, gan->w_d[i]), gan->b_d[i]);
+    mat_sum_z_act(z_d[i], act, gan->w_d[i], gan->b_d[i]);
 
     switch (gan->act_fn_d[i])
     {
@@ -202,7 +246,7 @@ void forward_d_(gan_t *gan, matrix_t *x, int real)
       mat_sigmoid_(a_d[i], z_d[i]);
       break;
     default:
-      printf("Error activation function.\n");
+      fprintf(stderr, "Error: invalid activation function. \n");
       exit(1);
     }
     act = a_d[i];
@@ -223,6 +267,7 @@ void backward_d_(gan_t *gan, matrix_t *x_real)
   {
     if (i != gan->nb_layers - 2)
       mat_dot_(gan->da_d[i], gan->dz_d[i + 1], mat_transpose(gan->w_d[i + 1]));
+    // mat_der_(gan->da_d[i], gan->dz_d[i + 1], gan->w_d[i + 1], 0);
 
     switch (gan->act_fn_d[i])
     {
@@ -234,14 +279,16 @@ void backward_d_(gan_t *gan, matrix_t *x_real)
       mat_mul_(gan->dz_d[i], gan->da_d[i], mat_dsigmoid(mat_sigmoid(z)));
       break;
     default:
-      printf("Error activation function.\n");
+      fprintf(stderr, "Error: invalid activation function. \n");
       exit(1);
     }
 
     if (i - 1 < 0)
       mat_dot_(gan->dw_d_real[i], mat_transpose(x_real), gan->dz_d[i]);
+    // mat_der_(gan->dw_d_real[i], x_real, gan->dz_d[i], 1);
     else
       mat_dot_(gan->dw_d_real[i], mat_transpose(gan->a_d_fake[i - 1]), gan->dz_d[i]);
+    // mat_der_(gan->dw_d_real[i], gan->a_d_fake[i - 1], gan->dz_d[i], 1);
     mat_sum_axis0_(gan->db_d_real[i], gan->dz_d[i]);
 
     z = gan->z_d_fake[i];
@@ -255,6 +302,7 @@ void backward_d_(gan_t *gan, matrix_t *x_real)
   {
     if (i != gan->nb_layers - 2)
       mat_dot_(gan->da_d[i], gan->dz_d[i + 1], mat_transpose(gan->w_d[i + 1]));
+    // mat_der_(gan->da_d[i], gan->dz_d[i + 1], gan->w_d[i + 1], 0);
 
     switch (gan->act_fn_d[i])
     {
@@ -265,19 +313,23 @@ void backward_d_(gan_t *gan, matrix_t *x_real)
       mat_mul_(gan->dz_d[i], gan->da_d[i], mat_dsigmoid(mat_sigmoid(gan->z_d_fake[i])));
       break;
     default:
-      printf("Error activation function.\n");
+      fprintf(stderr, "Error: invalid activation function. \n");
       exit(1);
     }
 
     if (i - 1 < 0)
       mat_dot_(gan->dw_d_fake[i], mat_transpose(gan->a_g[ri]), gan->dz_d[i]);
+    // mat_der_(gan->dw_d_fake[i], gan->a_g[ri], gan->dz_d[i], 1);
     else
       mat_dot_(gan->dw_d_fake[i], mat_transpose(gan->a_d_fake[i - 1]), gan->dz_d[i]);
+    // mat_der_(gan->dw_d_fake[i], gan->a_d_fake[i - 1], gan->dz_d[i], 1);
     mat_sum_axis0_(gan->db_d_fake[i], gan->dz_d[i]);
   }
 
   matrix_t **dw = (matrix_t **)malloc((gan->nb_layers - 1) * sizeof(*dw));
+  assert(dw);
   matrix_t **db = (matrix_t **)malloc((gan->nb_layers - 1) * sizeof(*db));
+  assert(db);
 
   for (i = 0; i < gan->nb_layers - 1; i++)
   {
@@ -316,6 +368,7 @@ void backward_g_(gan_t *gan, matrix_t *z)
   {
     if (i != ri)
       mat_dot_(gan->da_d[i], gan->dz_d[i + 1], mat_transpose(gan->w_d[i + 1]));
+    // mat_der_(gan->da_d[i], gan->dz_d[i + 1], gan->w_d[i + 1], 0);
 
     switch (gan->act_fn_d[i])
     {
@@ -326,17 +379,19 @@ void backward_g_(gan_t *gan, matrix_t *z)
       mat_mul_(gan->dz_d[i], gan->da_d[i], mat_dsigmoid(mat_sigmoid(gan->z_d_fake[i])));
       break;
     default:
-      printf("Error activation function.\n");
+      fprintf(stderr, "Error: invalid activation function. \n");
       exit(1);
     }
   }
 
   matrix_t *dx_d = mat_dot(gan->dz_d[0], mat_transpose(gan->w_d[0]));
   matrix_t *act = dx_d;
+
   for (i = ri; i >= 0; i--)
   {
     if (i != ri)
       mat_dot_(gan->da_g[i], gan->dz_g[i + 1], mat_transpose(gan->w_g[i + 1]));
+    // mat_der_(gan->da_g[i], gan->dz_g[i + 1], gan->w_g[i + 1], 0);
 
     switch (gan->act_fn_g[i])
     {
@@ -347,15 +402,17 @@ void backward_g_(gan_t *gan, matrix_t *z)
       mat_mul_(gan->dz_g[i], act, mat_dlrelu(gan->z_g[i], 0));
       break;
     default:
-      printf("Error activation function.\n");
+      fprintf(stderr, "Error: invalid activation function. \n");
       exit(1);
     }
     act = gan->da_g[MIN(0, i - 1)];
 
     if (i - 1 < 0)
       mat_dot_(gan->dw_g[i], mat_transpose(z), gan->dz_g[i]);
+    // mat_der_(gan->dw_g[i], z, gan->dz_g[i], 1);
     else
       mat_dot_(gan->dw_g[i], mat_transpose(gan->a_g[i - 1]), gan->dz_g[i]);
+    // mat_der_(gan->dw_g[i], gan->a_g[i - 1], gan->dz_g[i], 1);
 
     mat_sum_axis0_(gan->db_g[i], gan->dz_g[i]);
   }
@@ -374,9 +431,10 @@ void backward_g_(gan_t *gan, matrix_t *z)
 
 void train_gan(config_t *cfg, gan_t *gan, mnist_t *mnist)
 {
+  clock_t t;
   int i, j, bs, il, i_min;
   int ri = gan->nb_layers - 2;
-  double losses_d, losses_g, avg_d_fake, avg_d_real;
+  double losses_d, losses_g, avg_d_fake, avg_d_real, eps_time;
   losses_d = losses_g = avg_d_fake = avg_d_real = 0.0;
 
   matrix_t *z = mat_zinit(cfg->batch_sz, gan->input_layer_sz_g);
@@ -395,12 +453,31 @@ void train_gan(config_t *cfg, gan_t *gan, mnist_t *mnist)
       i_min = i * cfg->batch_sz;
       mat_copy_(x_real, cfg->x_train, i_min);
 
+      // t = clock();
       forward_g_(gan, z);
+      // t = clock() - t;
+      // eps_time = ((double)t)/CLOCKS_PER_SEC;
+      // printf("Forward_g takes %fs.\n", eps_time);
+
+      // t = clock();
       forward_d_(gan, x_real, 1);
+      // t = clock() - t;
+      // eps_time = ((double)t)/CLOCKS_PER_SEC;
+      // printf("Forward_d takes %fs.\n", eps_time);
+
       forward_d_(gan, gan->a_g[ri], 0);
 
+      // t = clock();
       backward_d_(gan, x_real);
+      // t = clock() - t;
+      // eps_time = ((double)t)/CLOCKS_PER_SEC;
+      // printf("Backward_d takes %fs.\n", eps_time);
+
+      // t = clock();
       backward_g_(gan, z);
+      // t = clock() - t;
+      // eps_time = ((double)t)/CLOCKS_PER_SEC;
+      // printf("Backward_g takes %fs.\n\n", eps_time);
     }
 
     if (i % 5 == 0)

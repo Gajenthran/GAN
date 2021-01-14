@@ -135,6 +135,7 @@ void load_mnist_config(config_t *cfg, mnist_t *mnist)
 
   matrix_t *x_train = mat_zinit(size, cfg->img_sz);
   unsigned int *y_train = (unsigned int *)malloc(size * sizeof(*y_train));
+  assert(y_train);
 
   // Take only label with digit 3
   for (i = 0; i < cfg->num_train; i++)
